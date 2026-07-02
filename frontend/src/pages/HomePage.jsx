@@ -1,17 +1,20 @@
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Navigate } from 'react-router-dom'
 import {
   AppBar,
   Box,
   Button,
+  CircularProgress,
   Container,
   Toolbar,
   Typography,
 } from '@mui/material'
 import RestaurantIcon from '@mui/icons-material/Restaurant'
-import { logoutUser } from '../store/authSlice'
+import DonorHomePage from './DonorHomePage'
+import { fetchCurrentUser, logoutUser } from '../store/authSlice'
 
-function HomePage() {
+function ReceiverHomePage() {
   const dispatch = useDispatch()
   const { user } = useSelector((state) => state.auth)
 
@@ -38,11 +41,57 @@ function HomePage() {
           Welcome{user?.username ? `, ${user.username}` : ''}!
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          You are signed in. More features coming soon.
+          Receiver features coming soon.
         </Typography>
       </Container>
     </Box>
   )
+}
+
+function HomePage() {
+  const dispatch = useDispatch()
+  const { user, isAuthenticated } = useSelector((state) => state.auth)
+  const [profileLoading, setProfileLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+
+    const loadProfile = async () => {
+      if (isAuthenticated && !user?.role) {
+        await dispatch(fetchCurrentUser())
+      }
+      if (active) {
+        setProfileLoading(false)
+      }
+    }
+
+    loadProfile()
+
+    return () => {
+      active = false
+    }
+  }, [dispatch, isAuthenticated, user?.role])
+
+  if (profileLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  if (user?.role === 'DONOR') {
+    return <DonorHomePage />
+  }
+
+  return <ReceiverHomePage />
 }
 
 function ProtectedRoute({ children }) {

@@ -1,6 +1,29 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import api from '../api/authApi'
 
+const persistUser = (user) => {
+  localStorage.setItem('username', user.username)
+  localStorage.setItem('userRole', user.role)
+}
+
+const clearPersistedUser = () => {
+  localStorage.removeItem('username')
+  localStorage.removeItem('userRole')
+}
+
+export const fetchCurrentUser = createAsyncThunk(
+  'auth/fetchCurrentUser',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get('/auth/me/')
+      persistUser(data)
+      return data
+    } catch (error) {
+      return rejectWithValue('Failed to load user profile.')
+    }
+  }
+)
+
 export const loginUser = createAsyncThunk(
   'auth/login',
   async ({ username, password }, { rejectWithValue }) => {
@@ -8,7 +31,11 @@ export const loginUser = createAsyncThunk(
       const { data } = await api.post('/auth/login/', { username, password })
       localStorage.setItem('accessToken', data.access)
       localStorage.setItem('refreshToken', data.refresh)
-      return { username, access: data.access, refresh: data.refresh }
+
+      const { data: user } = await api.get('/auth/me/')
+      persistUser(user)
+
+      return { ...user, access: data.access, refresh: data.refresh }
     } catch (error) {
       const message =
         error.response?.data?.detail ||
@@ -24,7 +51,7 @@ export const registerUser = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       await api.post('/auth/register/', userData)
-      return userData.username
+      return { username: userData.username, role: userData.role }
     } catch (error) {
       const data = error.response?.data
       if (typeof data === 'object' && data !== null) {
@@ -41,11 +68,18 @@ export const registerUser = createAsyncThunk(
 export const logoutUser = createAsyncThunk('auth/logout', async () => {
   localStorage.removeItem('accessToken')
   localStorage.removeItem('refreshToken')
+  clearPersistedUser()
 })
+
+const storedUsername = localStorage.getItem('username')
+const storedRole = localStorage.getItem('userRole')
 
 const initialState = {
   user: localStorage.getItem('accessToken')
-    ? { username: localStorage.getItem('username') || null }
+    ? {
+        username: storedUsername || null,
+        role: storedRole || null,
+      }
     : null,
   isAuthenticated: Boolean(localStorage.getItem('accessToken')),
   loading: false,
@@ -64,6 +98,15 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.user = {
+          id: action.payload.id,
+          username: action.payload.username,
+          role: action.payload.role,
+          email: action.payload.email,
+          phone: action.payload.phone,
+        }
+      })
       .addCase(loginUser.pending, (state) => {
         state.loading = true
         state.error = null
@@ -72,8 +115,13 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false
         state.isAuthenticated = true
-        state.user = { username: action.payload.username }
-        localStorage.setItem('username', action.payload.username)
+        state.user = {
+          id: action.payload.id,
+          username: action.payload.username,
+          role: action.payload.role,
+          email: action.payload.email,
+          phone: action.payload.phone,
+        }
         state.successMessage = 'Welcome back!'
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -98,7 +146,6 @@ const authSlice = createSlice({
         state.isAuthenticated = false
         state.error = null
         state.successMessage = null
-        localStorage.removeItem('username')
       })
   },
 })

@@ -34,7 +34,6 @@ class FoodListingSerializer(serializers.ModelSerializer):
             'donor_id',
             'donor_username',
             'expires_at',
-            'status',
             'created_at',
             'updated_at',
         )
@@ -49,11 +48,19 @@ class FoodListingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Expiry hours must be greater than 0.')
         return value
 
+    def validate_status(self, value):
+        if value not in ('AVAILABLE', 'CANCELLED'):
+            raise serializers.ValidationError(
+                'Status must be Available or Not Available.'
+            )
+        return value
+
     def create(self, validated_data):
         location_data = validated_data.pop('location')
         location = Location.objects.create(**location_data)
         validated_data['location'] = location
         validated_data['donor'] = self.context['request'].user
+        validated_data.setdefault('status', 'AVAILABLE')
         return FoodListing.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
