@@ -1,52 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Navigate } from 'react-router-dom'
-import {
-  AppBar,
-  Box,
-  Button,
-  CircularProgress,
-  Container,
-  Toolbar,
-  Typography,
-} from '@mui/material'
-import RestaurantIcon from '@mui/icons-material/Restaurant'
+import { Box, CircularProgress } from '@mui/material'
 import DonorHomePage from './DonorHomePage'
-import { fetchCurrentUser, logoutUser } from '../store/authSlice'
-
-function ReceiverHomePage() {
-  const dispatch = useDispatch()
-  const { user } = useSelector((state) => state.auth)
-
-  const handleLogout = () => {
-    dispatch(logoutUser())
-  }
-
-  return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" elevation={0}>
-        <Toolbar>
-          <RestaurantIcon sx={{ mr: 1 }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Liberate
-          </Typography>
-          <Button color="inherit" onClick={handleLogout}>
-            Logout
-          </Button>
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth="md" sx={{ py: 6 }}>
-        <Typography variant="h4" gutterBottom>
-          Welcome{user?.username ? `, ${user.username}` : ''}!
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Receiver features coming soon.
-        </Typography>
-      </Container>
-    </Box>
-  )
-}
+import ReceiverHomePage from './ReceiverHomePage'
+import { fetchCurrentUser } from '../store/authSlice'
 
 function HomePage() {
   const dispatch = useDispatch()
