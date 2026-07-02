@@ -35,7 +35,7 @@ const initialFormState = {
   landmark: '',
 }
 
-function FoodListingForm() {
+function FoodListingForm({ embedded = false }) {
   const dispatch = useDispatch()
   const { creating, error, successMessage } = useSelector((state) => state.food)
   const [formData, setFormData] = useState(initialFormState)
@@ -151,14 +151,18 @@ function FoodListingForm() {
     )
   }
 
-  return (
-    <Paper elevation={2} sx={{ p: { xs: 2, md: 3 } }}>
-      <Typography variant="h6" gutterBottom>
-        Create Food Listing
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Share surplus food with receivers in your area.
-      </Typography>
+  const formContent = (
+    <>
+      {!embedded && (
+        <>
+          <Typography variant="h6" gutterBottom>
+            Create Food Listing
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Share surplus food with receivers in your area.
+          </Typography>
+        </>
+      )}
 
       {(error || validationError) && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -320,6 +324,16 @@ function FoodListingForm() {
           </Grid>
         </Grid>
       </Box>
+    </>
+  )
+
+  if (embedded) {
+    return formContent
+  }
+
+  return (
+    <Paper elevation={2} sx={{ p: { xs: 2, md: 3 } }}>
+      {formContent}
     </Paper>
   )
 }
