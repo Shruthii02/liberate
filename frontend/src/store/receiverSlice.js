@@ -15,10 +15,16 @@ const formatApiError = (error, fallback) => {
 
 export const fetchAvailableListings = createAsyncThunk(
   'receiver/fetchAvailableListings',
-  async (_, { rejectWithValue }) => {
+  async ({ lat, lng, radius_km } = {}, { rejectWithValue }) => {
     try {
-      const { data } = await api.get('/food/listings/available/')
-      return data
+      const params = {}
+      if (lat != null && lng != null) {
+        params.lat = lat
+        params.lng = lng
+        params.radius_km = radius_km ?? 10
+      }
+      const { data } = await api.get('/food/listings/available/', { params })
+      return { listings: data, filter: { lat, lng, radius_km: params.radius_km } }
     } catch (error) {
       return rejectWithValue(formatApiError(error, 'Failed to load available events.'))
     }
@@ -87,11 +93,20 @@ const receiverSlice = createSlice({
     profileSaving: false,
     error: null,
     successMessage: null,
+    locationFilter: {
+      mode: 'all',
+      radiusKm: 10,
+      lat: null,
+      lng: null,
+    },
   },
   reducers: {
     clearReceiverMessages: (state) => {
       state.error = null
       state.successMessage = null
+    },
+    setLocationRadius: (state, action) => {
+      state.locationFilter.radiusKm = action.payload
     },
   },
   extraReducers: (builder) => {
@@ -102,7 +117,16 @@ const receiverSlice = createSlice({
       })
       .addCase(fetchAvailableListings.fulfilled, (state, action) => {
         state.loading = false
-        state.availableListings = action.payload
+        state.availableListings = action.payload.listings
+        const { lat, lng, radius_km } = action.payload.filter
+        if (lat != null && lng != null) {
+          state.locationFilter.mode = 'nearby'
+          state.locationFilter.lat = lat
+          state.locationFilter.lng = lng
+          state.locationFilter.radiusKm = radius_km ?? state.locationFilter.radiusKm
+        } else {
+          state.locationFilter.mode = 'all'
+        }
       })
       .addCase(fetchAvailableListings.rejected, (state, action) => {
         state.loading = false
@@ -155,5 +179,5 @@ const receiverSlice = createSlice({
   },
 })
 
-export const { clearReceiverMessages } = receiverSlice.actions
+export const { clearReceiverMessages, setLocationRadius } = receiverSlice.actions
 export default receiverSlice.reducer

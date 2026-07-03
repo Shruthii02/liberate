@@ -51,6 +51,7 @@ function ReceiverHomePage() {
     loading,
     error,
     successMessage,
+    locationFilter,
   } = useSelector((state) => state.receiver)
   const [tab, setTab] = useState(0)
 
@@ -86,7 +87,17 @@ function ReceiverHomePage() {
 
   const handleNotificationClick = () => {
     setTab(0)
-    dispatch(fetchAvailableListings())
+    if (locationFilter.mode === 'nearby' && locationFilter.lat != null && locationFilter.lng != null) {
+      dispatch(
+        fetchAvailableListings({
+          lat: locationFilter.lat,
+          lng: locationFilter.lng,
+          radius_km: locationFilter.radiusKm,
+        })
+      )
+    } else {
+      dispatch(fetchAvailableListings())
+    }
   }
 
   const handleBadgeClick = () => {

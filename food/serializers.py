@@ -115,6 +115,7 @@ class FoodListingSerializer(serializers.ModelSerializer):
 
 class AvailableFoodListingSerializer(serializers.ModelSerializer):
     location = ReceiverLocationSerializer(read_only=True)
+    distance_km = serializers.SerializerMethodField()
 
     class Meta:
         model = FoodListing
@@ -129,8 +130,12 @@ class AvailableFoodListingSerializer(serializers.ModelSerializer):
             'other_details',
             'status',
             'location',
+            'distance_km',
             'created_at',
         )
+
+    def get_distance_km(self, obj):
+        return getattr(obj, 'distance_km', None)
 
 
 class FoodClaimRespondSerializer(serializers.Serializer):
