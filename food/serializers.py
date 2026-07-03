@@ -3,13 +3,30 @@ from rest_framework import serializers
 from location.serializers import LocationSerializer
 from location.models import Location
 
-from .models import FoodListing
+from .models import FoodClaim, FoodListing
+
+
+class FoodClaimSerializer(serializers.ModelSerializer):
+    receiver_username = serializers.CharField(source='receiver.username', read_only=True)
+
+    class Meta:
+        model = FoodClaim
+        fields = (
+            'id',
+            'receiver_username',
+            'response',
+            'accepted_quantity',
+            'receiver_full_name',
+            'organization_name',
+            'created_at',
+        )
 
 
 class FoodListingSerializer(serializers.ModelSerializer):
     location = LocationSerializer()
     donor_username = serializers.CharField(source='donor.username', read_only=True)
     donor_id = serializers.IntegerField(source='donor.id', read_only=True)
+    claims = FoodClaimSerializer(many=True, read_only=True)
 
     class Meta:
         model = FoodListing
@@ -21,11 +38,13 @@ class FoodListingSerializer(serializers.ModelSerializer):
             'organization_event_name',
             'food_name',
             'quantity',
+            'remaining_quantity',
             'quantity_unit',
             'expiry_hours',
             'expires_at',
             'other_details',
             'status',
+            'claims',
             'created_at',
             'updated_at',
         )
@@ -33,7 +52,9 @@ class FoodListingSerializer(serializers.ModelSerializer):
             'id',
             'donor_id',
             'donor_username',
+            'remaining_quantity',
             'expires_at',
+            'claims',
             'created_at',
             'updated_at',
         )
@@ -61,6 +82,7 @@ class FoodListingSerializer(serializers.ModelSerializer):
         validated_data['location'] = location
         validated_data['donor'] = self.context['request'].user
         validated_data.setdefault('status', 'AVAILABLE')
+        validated_data['remaining_quantity'] = validated_data['quantity']
         return FoodListing.objects.create(**validated_data)
 
     def update(self, instance, validated_data):

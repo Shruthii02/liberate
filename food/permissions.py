@@ -15,5 +15,5 @@ class IsDonorOwner(BasePermission):
             return obj.donor == request.user
         return (
             obj.donor == request.user
-            and obj.status in ('AVAILABLE', 'CANCELLED')
+            and obj.status in ('AVAILABLE', 'CANCELLED', 'PARTIALLY_CLAIMED')
         )
