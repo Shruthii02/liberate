@@ -33,7 +33,26 @@ function MyListingsTable({ listings, loading, embedded = false }) {
     setSelectedListing(null)
   }
 
-  const canEdit = (listing) => ['AVAILABLE', 'CANCELLED'].includes(listing.status)
+  const canEdit = (listing) =>
+    ['AVAILABLE', 'CANCELLED', 'PARTIALLY_CLAIMED'].includes(listing.status)
+
+  const formatQuantityDisplay = (listing) => {
+    const unit = formatUnit(listing.quantity_unit)
+    const remaining = listing.remaining_quantity ?? listing.quantity
+    if (remaining !== listing.quantity) {
+      return `${listing.quantity} ${unit} total · ${remaining} remaining`
+    }
+    return `${listing.quantity} ${unit}`
+  }
+
+  const formatClaimsDisplay = (listing) => {
+    const accepted = (listing.claims || []).filter((claim) => claim.response === 'ACCEPTED')
+    if (!accepted.length) return null
+    return accepted.map(
+      (claim) =>
+        `${claim.receiver_full_name || claim.receiver_username} — ${claim.accepted_quantity} ${formatUnit(listing.quantity_unit)}`
+    )
+  }
 
   const wrapContent = (content) =>
     embedded ? content : <Paper elevation={2}>{content}</Paper>
@@ -75,7 +94,8 @@ function MyListingsTable({ listings, loading, embedded = false }) {
             <TableRow>
               <TableCell>Event</TableCell>
               <TableCell>Food</TableCell>
-              <TableCell>Quantity</TableCell>
+              <TableCell>Quantity / Remaining</TableCell>
+              <TableCell>Claims</TableCell>
               <TableCell>Expires At</TableCell>
               <TableCell>Location</TableCell>
               <TableCell>Status</TableCell>
@@ -88,7 +108,24 @@ function MyListingsTable({ listings, loading, embedded = false }) {
                 <TableCell>{listing.organization_event_name}</TableCell>
                 <TableCell>{listing.food_name}</TableCell>
                 <TableCell>
-                  {listing.quantity} {formatUnit(listing.quantity_unit)}
+                  <Typography variant="body2">{formatQuantityDisplay(listing)}</Typography>
+                </TableCell>
+                <TableCell>
+                  {(() => {
+                    const claimLines = formatClaimsDisplay(listing)
+                    if (!claimLines) {
+                      return (
+                        <Typography variant="body2" color="text.secondary">
+                          —
+                        </Typography>
+                      )
+                    }
+                    return claimLines.map((line, index) => (
+                      <Typography key={index} variant="body2" display="block">
+                        {line}
+                      </Typography>
+                    ))
+                  })()}
                 </TableCell>
                 <TableCell>
                   {dayjs(listing.expires_at).format('DD MMM YYYY, hh:mm A')}

@@ -76,9 +76,9 @@ class FoodListingSerializer(serializers.ModelSerializer):
         return value
 
     def validate_status(self, value):
-        if value not in ('AVAILABLE', 'CANCELLED'):
+        if value not in ('AVAILABLE', 'CANCELLED', "PARTIALLY_CLAIMED",):
             raise serializers.ValidationError(
-                'Status must be Available or Not Available.'
+                'Status must be AVAILABLE, CANCELLED or PARTIALLY_CLAIMED.'
             )
         return value
 
@@ -104,6 +104,12 @@ class FoodListingSerializer(serializers.ModelSerializer):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        if (
+            instance.remaining_quantity < instance.quantity
+            and validated_data.get("status") == "AVAILABLE"
+        ):
+            instance.update_status_from_remaining()
+
         return instance
 
 

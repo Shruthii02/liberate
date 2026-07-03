@@ -57,6 +57,9 @@ function DonorHomePage() {
   const handleTabChange = (_, value) => {
     dispatch(clearFoodMessages())
     setTab(value)
+    if (value === 1) {
+      dispatch(fetchMyListings())
+    }
   }
 
   return (

@@ -1,222 +1,167 @@
 import { useEffect, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
 import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
-  Stack,
   TextField,
   Typography,
 } from '@mui/material'
-import Grid from '@mui/material/Grid2'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
-import { TimePicker } from '@mui/x-date-pickers/TimePicker'
-import MyLocationIcon from '@mui/icons-material/MyLocation'
-import LocationOnIcon from '@mui/icons-material/LocationOn'
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import dayjs from 'dayjs'
+import { useDispatch, useSelector } from 'react-redux'
 import { clearFoodMessages, updateListing } from '../../store/foodSlice'
-import { LISTING_STATUS_OPTIONS, QUANTITY_UNITS } from './listingConstants'
+import { QUANTITY_UNITS, LISTING_STATUS_OPTIONS, formatUnit } from './listingConstants'
 
-function EditListingDialog({ listing, open, onClose }) {
+function EditListingDialog({ open, listing, onClose }) {
   const dispatch = useDispatch()
-  const { updating, error, successMessage } = useSelector((state) => state.food)
-  const [formData, setFormData] = useState(null)
-  const [coordinates, setCoordinates] = useState({ latitude: null, longitude: null })
-  const [expiryDate, setExpiryDate] = useState(dayjs())
-  const [expiryTime, setExpiryTime] = useState(dayjs())
-  const [validationError, setValidationError] = useState('')
-  const [locating, setLocating] = useState(false)
-  const [locationMessage, setLocationMessage] = useState('')
+  const { loading, error, successMessage } = useSelector((state) => state.food)
+
+  const [formData, setFormData] = useState({
+    organization_event_name: '',
+    food_name: '',
+    quantity: '',
+    quantity_unit: 'PLATES',
+    expires_at: dayjs().add(1, 'day'),
+    other_details: '',
+    address: '',
+    latitude: '',
+    longitude: '',
+    landmark: '',
+    status: 'AVAILABLE',
+  })
+
+  const acceptedClaims = (listing?.claims || []).filter((claim) => claim.response === 'ACCEPTED')
+  const hasAcceptedClaims = acceptedClaims.length > 0
+  const isPartiallyClaimed = listing?.status === 'PARTIALLY_CLAIMED'
 
   useEffect(() => {
-    if (listing && open) {
-      const expiresAt = dayjs(listing.expires_at)
+    if (listing) {
       setFormData({
         organization_event_name: listing.organization_event_name,
         food_name: listing.food_name,
-        quantity: String(listing.quantity),
+        quantity: listing.quantity,
         quantity_unit: listing.quantity_unit,
-        status: LISTING_STATUS_OPTIONS.some((option) => option.value === listing.status)
-          ? listing.status
-          : 'AVAILABLE',
+        expires_at: dayjs(listing.expires_at),
         other_details: listing.other_details || '',
-        address: listing.location.address,
-        landmark: listing.location.landmark || '',
+        address: listing.location?.address || '',
+        latitude: listing.location?.latitude || '',
+        longitude: listing.location?.longitude || '',
+        landmark: listing.location?.landmark || '',
+        status: listing.status === 'CANCELLED' ? 'CANCELLED' : listing.status,
       })
-      setCoordinates({
-        latitude: listing.location.latitude,
-        longitude: listing.location.longitude,
-      })
-      setExpiryDate(expiresAt)
-      setExpiryTime(expiresAt)
-      setValidationError('')
-      setLocationMessage('')
-      dispatch(clearFoodMessages())
     }
-  }, [listing, open, dispatch])
-
-  useEffect(() => {
-    if (successMessage && open) {
-      onClose()
-    }
-  }, [successMessage, open, onClose])
-
-  if (!formData) {
-    return null
-  }
+  }, [listing])
 
   const handleChange = (field) => (event) => {
     setFormData((prev) => ({ ...prev, [field]: event.target.value }))
-    setValidationError('')
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     dispatch(clearFoodMessages())
-  }
 
-  const handleUseCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setValidationError('Geolocation is not supported by your browser.')
-      return
-    }
-
-    setLocating(true)
-    setValidationError('')
-    setLocationMessage('')
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCoordinates({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        })
-        setLocationMessage('Current location updated successfully.')
-        setLocating(false)
+    const payload = {
+      organization_event_name: formData.organization_event_name,
+      food_name: formData.food_name,
+      quantity_unit: formData.quantity_unit,
+      expires_at: formData.expires_at.toISOString(),
+      other_details: formData.other_details,
+      status: formData.status,
+      location: {
+        address: formData.address,
+        latitude: parseFloat(formData.latitude),
+        longitude: parseFloat(formData.longitude),
+        landmark: formData.landmark,
       },
-      () => {
-        setValidationError('Unable to access your location. Please allow GPS permission.')
-        setLocating(false)
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    )
+    }
+
+    if (!hasAcceptedClaims) {
+      payload.quantity = parseInt(formData.quantity, 10)
+    }
+
+    const result = await dispatch(updateListing({ id: listing.id, data: payload }))
+    if (updateListing.fulfilled.match(result)) {
+      onClose()
+    }
   }
 
-  const handleSubmit = () => {
-    dispatch(clearFoodMessages())
-    setValidationError('')
+  if (!listing) return null
 
-    if (!formData.organization_event_name.trim()) {
-      setValidationError('Organization / event name is required.')
-      return
-    }
-    if (!formData.food_name.trim()) {
-      setValidationError('Food name is required.')
-      return
-    }
-    if (!formData.quantity || Number(formData.quantity) <= 0) {
-      setValidationError('Quantity must be greater than 0.')
-      return
-    }
-    if (!formData.address.trim()) {
-      setValidationError('Pickup address is required.')
-      return
-    }
-    if (coordinates.latitude === null || coordinates.longitude === null) {
-      setValidationError('Please click "Use My Current Location" to set the pickup point.')
-      return
-    }
-
-    const expiryDateTime = expiryDate
-      .hour(expiryTime.hour())
-      .minute(expiryTime.minute())
-      .second(0)
-      .millisecond(0)
-    const minutesUntilExpiry = expiryDateTime.diff(dayjs(), 'minute')
-
-    if (minutesUntilExpiry <= 0) {
-      setValidationError('Expiry date and time must be in the future.')
-      return
-    }
-
-    const expiryHours = Math.max(1, Math.ceil(minutesUntilExpiry / 60))
-
-    dispatch(
-      updateListing({
-        id: listing.id,
-        listingData: {
-          organization_event_name: formData.organization_event_name.trim(),
-          food_name: formData.food_name.trim(),
-          quantity: Number(formData.quantity),
-          quantity_unit: formData.quantity_unit,
-          expiry_hours: expiryHours,
-          status: formData.status,
-          other_details: formData.other_details.trim(),
-          location: {
-            address: formData.address.trim(),
-            latitude: coordinates.latitude,
-            longitude: coordinates.longitude,
-            landmark: formData.landmark.trim(),
-          },
-        },
-      })
-    )
-  }
+  const remaining = listing.remaining_quantity ?? listing.quantity
+  const claimed = listing.quantity - remaining
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>Edit Food Listing</DialogTitle>
-      <DialogContent dividers>
-        {(error || validationError) && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {validationError || error}
-          </Alert>
-        )}
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Edit Food Event</DialogTitle>
+      <Box component="form" onSubmit={handleSubmit}>
+        <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          {successMessage && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {successMessage}
+            </Alert>
+          )}
 
-        <Grid container spacing={2} sx={{ pt: 1 }}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              required
-              fullWidth
-              label="Organization / Event Name"
-              value={formData.organization_event_name}
-              onChange={handleChange('organization_event_name')}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              required
-              fullWidth
-              label="Food Name"
-              value={formData.food_name}
-              onChange={handleChange('food_name')}
-            />
-          </Grid>
+          {hasAcceptedClaims && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2" fontWeight={600} gutterBottom>
+                Original: {listing.quantity} · Remaining: {remaining} · Claimed: {claimed}{' '}
+                {formatUnit(listing.quantity_unit)}
+              </Typography>
+              {acceptedClaims.map((claim) => (
+                <Typography key={claim.id} variant="body2">
+                  {claim.receiver_full_name || claim.receiver_username}
+                  {claim.organization_name ? ` (${claim.organization_name})` : ''} —{' '}
+                  {claim.accepted_quantity} {formatUnit(listing.quantity_unit)}
+                </Typography>
+              ))}
+            </Alert>
+          )}
 
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <TextField
+            label="Organization / Event Name"
+            value={formData.organization_event_name}
+            onChange={handleChange('organization_event_name')}
+            fullWidth
+            required
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Food Name"
+            value={formData.food_name}
+            onChange={handleChange('food_name')}
+            fullWidth
+            required
+            sx={{ mb: 2 }}
+          />
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
             <TextField
-              required
-              fullWidth
-              type="number"
               label="Quantity"
-              inputProps={{ min: 1 }}
+              type="number"
               value={formData.quantity}
               onChange={handleChange('quantity')}
+              required={!hasAcceptedClaims}
+              disabled={hasAcceptedClaims}
+              helperText={hasAcceptedClaims ? 'Quantity cannot be changed after claims exist' : ''}
+              sx={{ flex: 1 }}
             />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <FormControl fullWidth required>
-              <InputLabel id="edit-quantity-unit-label">Quantity Unit</InputLabel>
+            <FormControl sx={{ flex: 1 }}>
+              <InputLabel>Unit</InputLabel>
               <Select
-                labelId="edit-quantity-unit-label"
-                label="Quantity Unit"
                 value={formData.quantity_unit}
+                label="Unit"
                 onChange={handleChange('quantity_unit')}
               >
                 {QUANTITY_UNITS.map((unit) => (
@@ -226,106 +171,65 @@ function EditListingDialog({ listing, open, onClose }) {
                 ))}
               </Select>
             </FormControl>
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <FormControl fullWidth required>
-              <InputLabel id="edit-status-label">Status</InputLabel>
-              <Select
-                labelId="edit-status-label"
-                label="Status"
-                value={formData.status}
-                onChange={handleChange('status')}
-              >
-                {LISTING_STATUS_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <DatePicker
-              label="Expiry Date"
-              value={expiryDate}
-              onChange={(value) => value && setExpiryDate(value)}
-              minDate={dayjs()}
-              slotProps={{ textField: { fullWidth: true, required: true } }}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TimePicker
-              label="Expiry Time"
-              value={expiryTime}
-              onChange={(value) => value && setExpiryTime(value)}
-              ampm
-              slotProps={{ textField: { fullWidth: true, required: true } }}
-            />
-          </Grid>
-
-          <Grid size={12}>
-            <Divider sx={{ my: 1 }} />
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-              <LocationOnIcon color="primary" />
-              <Typography variant="subtitle1">Pickup Location</Typography>
-            </Stack>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 8 }}>
-            <TextField
-              required
-              fullWidth
-              label="Address"
-              value={formData.address}
-              onChange={handleChange('address')}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <TextField
-              fullWidth
-              label="Landmark (optional)"
-              value={formData.landmark}
-              onChange={handleChange('landmark')}
-            />
-          </Grid>
-
-          <Grid size={12}>
-            <Button
-              variant="outlined"
-              startIcon={locating ? <CircularProgress size={18} /> : <MyLocationIcon />}
-              onClick={handleUseCurrentLocation}
-              disabled={locating}
+          </Box>
+          <DateTimePicker
+            label="Expires At"
+            value={formData.expires_at}
+            onChange={(value) => setFormData((prev) => ({ ...prev, expires_at: value }))}
+            minDateTime={dayjs()}
+            sx={{ width: '100%', mb: 2 }}
+          />
+          <TextField
+            label="Other Details"
+            value={formData.other_details}
+            onChange={handleChange('other_details')}
+            fullWidth
+            multiline
+            rows={2}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Address"
+            value={formData.address}
+            onChange={handleChange('address')}
+            fullWidth
+            required
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Landmark"
+            value={formData.landmark}
+            onChange={handleChange('landmark')}
+            fullWidth
+            sx={{ mb: 2 }}
+          />
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={formData.status}
+              label="Status"
+              onChange={handleChange('status')}
             >
-              Use My Current Location
-            </Button>
-            {locationMessage && (
-              <Typography variant="caption" color="success.main" sx={{ ml: 2 }}>
-                {locationMessage}
-              </Typography>
-            )}
-          </Grid>
-
-          <Grid size={12}>
-            <TextField
-              fullWidth
-              multiline
-              minRows={3}
-              label="Other Details (optional)"
-              value={formData.other_details}
-              onChange={handleChange('other_details')}
-            />
-          </Grid>
-        </Grid>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} disabled={updating}>
-          Cancel
-        </Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={updating}>
-          {updating ? <CircularProgress size={22} color="inherit" /> : 'Save Changes'}
-        </Button>
-      </DialogActions>
+              {isPartiallyClaimed && (
+                <MenuItem value="PARTIALLY_CLAIMED" disabled>
+                  Partially Claimed
+                </MenuItem>
+              )}
+              {LISTING_STATUS_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Box>
     </Dialog>
   )
 }
