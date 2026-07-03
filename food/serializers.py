@@ -6,12 +6,15 @@ from location.models import Location
 from .models import FoodClaim, FoodListing
 
 
+<<<<<<< HEAD
 class ReceiverLocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
         fields = ('address', 'landmark')
 
 
+=======
+>>>>>>> frontend/feat/food
 class FoodClaimSerializer(serializers.ModelSerializer):
     receiver_username = serializers.CharField(source='receiver.username', read_only=True)
 

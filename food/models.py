@@ -36,7 +36,11 @@ class FoodListing(models.Model):
     organization_event_name = models.CharField(max_length=200)
     food_name = models.CharField(max_length=200)
     quantity = models.PositiveIntegerField()
+<<<<<<< HEAD
     remaining_quantity = models.PositiveIntegerField(default=0)
+=======
+    remaining_quantity = models.IntegerField(default=0)
+>>>>>>> frontend/feat/food
     quantity_unit = models.CharField(max_length=20, choices=QUANTITY_UNIT_CHOICES)
     expiry_hours = models.PositiveIntegerField()
     expires_at = models.DateTimeField()
@@ -51,7 +55,11 @@ class FoodListing(models.Model):
 
     def save(self, *args, **kwargs):
         if self._state.adding:
+<<<<<<< HEAD
             if not self.remaining_quantity:
+=======
+            if self.remaining_quantity is None or self.remaining_quantity == 0:
+>>>>>>> frontend/feat/food
                 self.remaining_quantity = self.quantity
             self.expires_at = timezone.now() + timezone.timedelta(hours=self.expiry_hours)
         super().save(*args, **kwargs)
