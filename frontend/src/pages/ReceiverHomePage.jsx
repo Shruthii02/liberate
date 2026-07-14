@@ -8,6 +8,7 @@ import {
   Box,
   Button,
   Container,
+  Divider,
   IconButton,
   Paper,
   Stack,
@@ -82,15 +83,18 @@ function ReceiverHomePage() {
 
   const handleGoToProfile = () => {
     setTab(2)
+    scrollToDashboard()
   }
 
   const handleNotificationClick = () => {
     setTab(0)
+    scrollToDashboard()
     dispatch(fetchAvailableListings())
   }
 
   const handleBadgeClick = () => {
     setTab(1)
+    scrollToDashboard()
   }
 
   return (
@@ -101,13 +105,13 @@ function ReceiverHomePage() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
             Liberate
           </Typography>
-          <Button color="inherit" onClick={scrollToDashboard} sx={{ mr: 1, display: { xs: 'none', sm: 'inline-flex' } }}>
-            Dashboard
-          </Button>
-          <Button color="inherit" onClick={scrollToAbout} sx={{ mr: 2, display: { xs: 'none', sm: 'inline-flex' } }}>
+          <Button color="inherit" onClick={scrollToAbout} sx={{ mr: 1, display: { xs: 'none', sm: 'inline-flex' } }}>
             About
           </Button>
-          <IconButton color="inherit" onClick={handleBadgeClick} sx={{ mr: 1 }}>
+          <Button color="inherit" onClick={scrollToDashboard} sx={{ mr: 2, display: { xs: 'none', sm: 'inline-flex' } }}>
+            Events
+          </Button>
+          <IconButton color="inherit" onClick={handleBadgeClick} sx={{ mr: 1 }} aria-label="Notifications">
             <Badge badgeContent={unreadCount} color="error">
               <NotificationsIcon />
             </Badge>
@@ -126,26 +130,63 @@ function ReceiverHomePage() {
         </Toolbar>
       </AppBar>
 
-      <ReceiverHero username={user?.username} />
+      {/* 1. Hero */}
+      <ReceiverHero
+        username={user?.username}
+        onLearnMore={scrollToAbout}
+        onGetStarted={scrollToDashboard}
+      />
 
+      {/* 2. About — first content section */}
+      <DonorAboutSection role="RECEIVER" onGetStarted={scrollToDashboard} />
+
+      <Divider />
+
+      {/* 3. Events / dashboard below about */}
       <Box
         id="dashboard"
+        component="section"
         sx={{
           position: 'relative',
-          py: { xs: 4, md: 5 },
+          py: { xs: 5, md: 7 },
           '&::before': {
             content: '""',
             position: 'absolute',
             inset: 0,
-            backgroundImage: `linear-gradient(rgba(244, 247, 244, 0.94), rgba(244, 247, 244, 0.97)), url(${IMAGES.pageBg})`,
+            backgroundImage: `linear-gradient(rgba(244, 247, 244, 0.95), rgba(244, 247, 244, 0.98)), url(${IMAGES.pageBg})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            backgroundAttachment: { md: 'fixed' },
             zIndex: 0,
           },
         }}
       >
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+          <Box sx={{ mb: 4, textAlign: { xs: 'left', md: 'center' } }}>
+            <Typography variant="overline" color="primary" sx={{ letterSpacing: 2, fontWeight: 700 }}>
+              Your Workspace
+            </Typography>
+            <Typography variant="h4" fontWeight={800} gutterBottom sx={{ mt: 0.5 }}>
+              Find & Claim Food Events
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: { md: 'auto' } }}>
+              Browse available donations, respond to events near you, and keep your verification profile up to date.
+            </Typography>
+          </Box>
+
+          {!profileComplete && (
+            <Alert
+              severity="warning"
+              sx={{ mb: 3 }}
+              action={
+                <Button color="inherit" size="small" onClick={handleGoToProfile}>
+                  Complete now
+                </Button>
+              }
+            >
+              Complete your verification profile before accepting food events.
+            </Alert>
+          )}
+
           <ReceiverStats
             availableCount={availableListings.length}
             unreadCount={unreadCount}
@@ -153,21 +194,22 @@ function ReceiverHomePage() {
           />
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert severity="error" sx={{ mb: 3 }} onClose={() => dispatch(clearReceiverMessages())}>
               {error}
             </Alert>
           )}
           {successMessage && (
-            <Alert severity="success" sx={{ mb: 3 }}>
+            <Alert severity="success" sx={{ mb: 3 }} onClose={() => dispatch(clearReceiverMessages())}>
               {successMessage}
             </Alert>
           )}
 
-          <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+          <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden' }}>
             <Tabs
               value={tab}
               onChange={handleTabChange}
-              variant="fullWidth"
+              variant="scrollable"
+              scrollButtons="auto"
               sx={{
                 bgcolor: 'grey.50',
                 borderBottom: 1,
@@ -177,10 +219,15 @@ function ReceiverHomePage() {
                   fontSize: '0.95rem',
                   fontWeight: 600,
                   gap: 1,
+                  minWidth: { xs: 120, sm: 160 },
                 },
               }}
             >
-              <Tab icon={<EventAvailableIcon />} iconPosition="start" label="Available Events" />
+              <Tab
+                icon={<EventAvailableIcon />}
+                iconPosition="start"
+                label={`Events (${availableListings.length})`}
+              />
               <Tab
                 icon={
                   <Badge badgeContent={unreadCount} color="error">
@@ -215,12 +262,10 @@ function ReceiverHomePage() {
         </Container>
       </Box>
 
-      <DonorAboutSection />
-
       <Box
         component="footer"
         sx={{
-          py: 3,
+          py: 3.5,
           textAlign: 'center',
           bgcolor: 'primary.dark',
           color: 'white',
