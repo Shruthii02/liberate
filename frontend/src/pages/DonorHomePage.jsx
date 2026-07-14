@@ -7,6 +7,7 @@ import {
   Box,
   Button,
   Container,
+  Divider,
   Paper,
   Stack,
   Tab,
@@ -39,6 +40,7 @@ function DonorHomePage() {
   useEffect(() => {
     if (successMessage) {
       setTab(1)
+      document.getElementById('dashboard')?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [successMessage])
 
@@ -70,11 +72,11 @@ function DonorHomePage() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
             Liberate
           </Typography>
-          <Button color="inherit" onClick={scrollToDashboard} sx={{ mr: 1, display: { xs: 'none', sm: 'inline-flex' } }}>
-            Dashboard
-          </Button>
-          <Button color="inherit" onClick={scrollToAbout} sx={{ mr: 2, display: { xs: 'none', sm: 'inline-flex' } }}>
+          <Button color="inherit" onClick={scrollToAbout} sx={{ mr: 1, display: { xs: 'none', sm: 'inline-flex' } }}>
             About
+          </Button>
+          <Button color="inherit" onClick={scrollToDashboard} sx={{ mr: 2, display: { xs: 'none', sm: 'inline-flex' } }}>
+            Events
           </Button>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mr: 2 }}>
             <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', fontSize: 14 }}>
@@ -90,40 +92,63 @@ function DonorHomePage() {
         </Toolbar>
       </AppBar>
 
-      <DonorHero username={user?.username} />
+      {/* 1. Hero */}
+      <DonorHero
+        username={user?.username}
+        onLearnMore={scrollToAbout}
+        onGetStarted={scrollToDashboard}
+      />
 
+      {/* 2. About — first content section */}
+      <DonorAboutSection role="DONOR" onGetStarted={scrollToDashboard} />
+
+      <Divider />
+
+      {/* 3. Events / dashboard below about */}
       <Box
         id="dashboard"
+        component="section"
         sx={{
           position: 'relative',
-          py: { xs: 4, md: 5 },
+          py: { xs: 5, md: 7 },
           '&::before': {
             content: '""',
             position: 'absolute',
             inset: 0,
-            backgroundImage: `linear-gradient(rgba(244, 247, 244, 0.94), rgba(244, 247, 244, 0.97)), url(${IMAGES.pageBg})`,
+            backgroundImage: `linear-gradient(rgba(244, 247, 244, 0.95), rgba(244, 247, 244, 0.98)), url(${IMAGES.pageBg})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            backgroundAttachment: { md: 'fixed' },
             zIndex: 0,
           },
         }}
       >
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+          <Box sx={{ mb: 4, textAlign: { xs: 'left', md: 'center' } }}>
+            <Typography variant="overline" color="primary" sx={{ letterSpacing: 2, fontWeight: 700 }}>
+              Your Workspace
+            </Typography>
+            <Typography variant="h4" fontWeight={800} gutterBottom sx={{ mt: 0.5 }}>
+              Register & Manage Food Events
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: { md: 'auto' } }}>
+              Create a new surplus food listing or review and edit the events you have already shared.
+            </Typography>
+          </Box>
+
           <DonorStats listings={listings} />
 
           {error && !loading && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert severity="error" sx={{ mb: 3 }} onClose={() => dispatch(clearFoodMessages())}>
               {error}
             </Alert>
           )}
           {successMessage && (
-            <Alert severity="success" sx={{ mb: 3 }}>
+            <Alert severity="success" sx={{ mb: 3 }} onClose={() => dispatch(clearFoodMessages())}>
               {successMessage}
             </Alert>
           )}
 
-          <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+          <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden' }}>
             <Tabs
               value={tab}
               onChange={handleTabChange}
@@ -141,7 +166,11 @@ function DonorHomePage() {
               }}
             >
               <Tab icon={<AddCircleOutlineIcon />} iconPosition="start" label="Register Event" />
-              <Tab icon={<ListAltIcon />} iconPosition="start" label="My Events" />
+              <Tab
+                icon={<ListAltIcon />}
+                iconPosition="start"
+                label={`My Events (${listings.length})`}
+              />
             </Tabs>
 
             <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -155,12 +184,10 @@ function DonorHomePage() {
         </Container>
       </Box>
 
-      <DonorAboutSection />
-
       <Box
         component="footer"
         sx={{
-          py: 3,
+          py: 3.5,
           textAlign: 'center',
           bgcolor: 'primary.dark',
           color: 'white',
